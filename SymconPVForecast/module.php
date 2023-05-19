@@ -535,14 +535,9 @@ class PVForecastcls{
 					$pv_estimate = $pv_estimate * (100-$tempMinus)/100;
 				}
 		
-				if($PV["autotune"]){
-					$pv_estimate_orig = $pv_estimate;
-					$pv_estimate = $pv_estimate * $this->getDeviationHour(date("G",$ts), $radiation);
-					if($pv_estimate > $solarItem["kwp"]*1.2) $pv_estimate= $solarItem["kwp"]*1.2;
-				}else{
-					$pv_estimate_orig = $pv_estimate;
-				}
-		
+
+				$pv_estimate_orig = $pv_estimate;
+
 				if($PV["kwh"]){
 					$pv_estimate = round($pv_estimate/1000,1);
 					$pv_estimate_orig = round($pv_estimate_orig/1000,1);
@@ -557,6 +552,7 @@ class PVForecastcls{
 					$this->fc["hourly"][$k]["pv_estimate"] += $pv_estimate;
 				}
 
+				$pv_estimate_orig = $pv_estimate;
 				if(!array_key_exists("pv_estimate_orig", $this->fc["hourly"][$k])){
 					$this->fc["hourly"][$k]["pv_estimate_orig"] = $pv_estimate_orig;
 				}else{
@@ -567,6 +563,19 @@ class PVForecastcls{
 
 				$notSet = False;
 			} // foreach FC
+		}
+
+		if($PV["autotune"]){
+			foreach($this->fc["hourly"] as $k => $fc){  
+				$radiation  = $fc["rad_total"];
+				$ts       	= $fc["ts"];
+
+				$pv_estimate = $this->fc["hourly"][$k]["pv_estimate"];
+				$pv_estimate = $pv_estimate * $this->getDeviationHour(date("G",$ts), $radiation);
+				if($pv_estimate > $PV["kwp"]*1.2) $pv_estimate= $PV["kwp"]*1.2;
+
+				$this->fc["hourly"][$k]["pv_estimate"] = $pv_estimate;
+			}
 		}
 
 		if($notSet) return false;
