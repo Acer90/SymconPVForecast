@@ -267,8 +267,11 @@ class PVForecastcls{
 			IPS_SetVariableCustomProfile($id, $varprof);
 			
 			#if($cnt == 0 && date("G")<10 || $cnt > 0) setValue($id, $fc["pv_estimate"]); // Früher nur vor 10 Uhr - heute aktualsiieren wir alles, da alle Daten im FC drin sind.
-			setValue($id, $fc["pv_estimate"]);
-
+			
+			if(array_key_exists("pv_estimate", $fc)){
+				setValue($id, $fc["pv_estimate"]);
+			}
+			
 			if($cnt >= $days)break;
 			$cnt++;
 		}
@@ -321,8 +324,12 @@ class PVForecastcls{
 				
 				if($fc["hour"] > 6 && $fc["hour"] < 22 ){
 					$cnt++;
-					$height = round($fc["pv_estimate"]/$pv_max*100*2,0);
-					$html .= "<div class='pv' style='height: $height"."px'>".$fc["pv_estimate"]."</div>";
+					if(array_key_exists("pv_estimate", $fc)){
+						$height = round($fc["pv_estimate"]/$pv_max*100*2,0);
+						$html .= "<div class='pv' style='height: $height"."px'>".$fc["pv_estimate"]."</div>";
+					}else{
+						$html .= "<div class='pv' style='height: 0"."px'>0</div>";
+					}
 				}					
 				if($cnt >96)break;
 			}
@@ -333,13 +340,15 @@ class PVForecastcls{
 			foreach ($this->fc["hourly"] as $fc){
 				if($fc["hour"] > 6 && $fc["hour"] < 22 ){
 					$cnt++;
-					$height = round($fc["pv_estimate"]/$pv_max*100*2,0);
-					$html .= "<div class='pv_txt' style='height:20px'>".($fc["hour"])."h</div>";
-					if($fc["hour"]==12){
-						$dayfc = $this->getDayForecast($fc["ts"]);
-						$dayfc = ($this->PV["kwh"])? $dayfc : $dayfc/1000;
-						$dayfc = round($dayfc,1);
-						$html.="<div class='pv_day' style='left:". (31 * $cnt )."px'>$dayfc kWh</div>";
+					if(array_key_exists("pv_estimate", $fc)){
+						$height = round($fc["pv_estimate"]/$pv_max*100*2,0);
+						$html .= "<div class='pv_txt' style='height:20px'>".($fc["hour"])."h</div>";
+						if($fc["hour"]==12){
+							$dayfc = $this->getDayForecast($fc["ts"]);
+							$dayfc = ($this->PV["kwh"])? $dayfc : $dayfc/1000;
+							$dayfc = round($dayfc,1);
+							$html.="<div class='pv_day' style='left:". (31 * $cnt )."px'>$dayfc kWh</div>";
+						}
 					}
 				}
 				if($cnt >96)break;
@@ -373,6 +382,8 @@ class PVForecastcls{
 
         foreach ($this->fc["hourly"] as $fitem){
             //print_r($fitem);
+			if(!array_key_exists("pv_estimate", $fitem)) continue;
+			
             $d = new DateTime(); //, new DateTimeZone('UTC')
             $d->setTimestamp($fitem["ts"]);
             $d->modify( '-'.$this->PV["forecast"].' day' );
@@ -428,6 +439,8 @@ class PVForecastcls{
 			return false;
 		}
 
+		$notSet = true;
+
 		foreach($PV["solarData"] as $solarItem){
 			//durchlauf für jede ausrichtung
 			if(!$solarItem["activ"]) continue; //alle deaktivierten überspringen
@@ -435,7 +448,7 @@ class PVForecastcls{
 				$ts       = $fc["ts"];
 				$clouds   = $fc["clouds"];
 				$temp     =  $fc["temp"];
-	
+
 				// Sonnenposition ermitteln
 				$ret            = $this->calcSun($ts, $lon, $lat);
 				$sun_azimuth    = $ret["azimuth"];
@@ -551,8 +564,12 @@ class PVForecastcls{
 				}
 
 				if($this->fc["hourly"][$k]["pv_estimate"] > $PV["wr_kwp_max"])$this->fc["hourly"][$k]["pv_estimate"] = $PV["wr_kwp_max"];
+
+				$notSet = False;
 			} // foreach FC
 		}
+
+		if($notSet) return false;
 		
 		$id_prev = false;
 		foreach($this->fc["hourly"] as $id => $fcE){
@@ -588,6 +605,8 @@ class PVForecastcls{
 			$k_o = $k;
 			$d_o = $d;
 		}
+
+		return true;
 	} // function Forecast
 
 	#### checkEvent #####################################################################
